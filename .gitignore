@@ -1,6 +1,14 @@
 
 # Created by https://www.gitignore.io/api/osx,node,linux,windows
 
+# CDK and Python
+venv
+.aws-sam
+
+# Files created while testing the code
+out.txt
+
+
 ### Linux ###
 *~
 

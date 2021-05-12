@@ -5,7 +5,7 @@ const app = express();
 app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
-  res.send(['events', 'users']);
+  res.send(['events', 'users','tbd']);
 });
 
 app.get('/users', (req, res) => {
