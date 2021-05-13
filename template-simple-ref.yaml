@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: template-network-stack.yml
+      TimeoutInMinutes: '10'
+Outputs:
+  VPCRef:
+    Description: VPC
+    Value:  !GetAtt VPCStack.Outputs.VpcIdParameter
+  VpcAllowedSecurityGroupIdRef:
+    Description: VPC Allowed Security Group Id
+    Value:  !GetAtt VPCStack.Outputs.VpcAllowedSecurityGroupIdParameter
+  VpcEndpointSubnetIdsRef:
+    Description: A list of the private subnets
+    Value: !Join [ ",", [ !GetAtt VPCStack.Outputs.PrivateSubnet1, !GetAtt VPCStack.Outputs.PrivateSubnet2 ]]
+
+    

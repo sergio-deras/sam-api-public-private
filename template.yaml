@@ -1,49 +1,158 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-    aws-sam-express
+  aws-sam-express-private
 
-    SAM Template
+  SAM Template for private APIs.
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
-    Function:
-        Timeout: 3
+  Function:
+    Timeout: 3
 
-
+Parameters:
+  VpcIdParameter:
+    Type: "AWS::EC2::VPC::Id"
+    Description: VPC ID in which the VPC Endpoint should be created
+  VpcAllowedSecurityGroupIdParameter:
+    Type: "AWS::EC2::SecurityGroup::Id"
+    Description: Security Group Id that is allowed to communicate to private API gateway
+  VpcEndpointSubnetIdsParameter:
+    #Type: "List<AWS::EC2::Subnet::Id>"
+    Type: "CommaDelimitedList"
+    Description: The ID of one or more subnets in which to create an endpoint network interface
+    Default:  "subnet-08a3821b3c0a134d3,subnet-0307ab823a78fc594"
+  pLatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+# https://aws.amazon.com/es/blogs/mt/integrating-aws-cloudformation-with-aws-systems-manager-parameter-store/
 Resources:
 
-    SocialEventsFunction:
-        Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-        Properties:
-            CodeUri: ./
-            Handler: lambda.handler
-            Runtime: nodejs12.x
-            Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
-                Variables:
-                    PARAM1: VALUE
-            Events:
-                SocialEventsAPIRoot:
-                    Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-                    Properties:
-                        Path: /
-                        Method: ANY
-                SocialEventsAPI:
-                    Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-                    Properties:
-                        Path: /{proxy+}
-                        Method: ANY
+  ### VPC to use, you can reference an existing one, in that case use the Parameters
+  #VPCStack:
+  #  Type: AWS::CloudFormation::Stack
+  #  Properties:
+  #    TemplateURL: network-stack.yml
+  #    TimeoutInMinutes: '10'
 
-Outputs:
+  ### How to import from an external Stack
+  # https://aws.amazon.com/es/premiumsupport/knowledge-center/cloudformation-reference-resource/#:~:text=To%20create%20a%20cross%2Dstack%20reference%2C%20use%20the%20export%20field,names%20specified%20in%20the%20template.
 
-    SocialEventsAPI:
-        Description: "API Gateway endpoint URL for Prod stage"
-        Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+### SERVERLESS FUNCTION
+  SocialEventsFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: lambdas
+      Handler: lambda.handler
+      Runtime: nodejs12.x
+      Events:
+        APIRoot:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref SocialEventsPrivateApi
+#        API:
+#          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+#          Properties:
+#            Path: /{proxy+}
+#            Method: ANY
+#            RestApiId: !Ref SocialEventsPrivateApi
 
-    SocialEventsFunction:
-        Description: "Social Events Lambda Function ARN"
-        Value: !GetAtt SocialEventsFunction.Arn
+### SEC GRP
+  SocialEventsApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+#     VpcId: !GetAtt VPCStack.Outputs.VpcIdParameter
+      VpcId: !Ref VpcIdParameter
+      GroupDescription: Allows access over 443 to a single VPC Security Group
+      SecurityGroupIngress:
+        -
+          IpProtocol: "tcp"
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref VpcAllowedSecurityGroupIdParameter
+#         SourceSecurityGroupId: !GetAtt VPCStack.Outputs.VpcAllowedSecurityGroupIdParameter
 
-    SocialEventsFunctionIamRole:
-        Description: "Implicit IAM Role created for Social Events function"
-        Value: !GetAtt SocialEventsFunction.Arn
+### VPC Endpoint
+  SocialEventAPIAccessEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId:
+        !Ref VpcIdParameter
+#       !GetAtt VPCStack.Outputs.VpcIdParameter
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.execute-api"
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds: !Ref VpcEndpointSubnetIdsParameter
+#       - !Ref VpcEndpointSubnetIdsParameter
+#       - !GetAtt VPCStack.Outputs.PrivateSubnet1
+#       - !GetAtt VPCStack.Outputs.PrivateSubnet2
+      SecurityGroupIds:
+        -
+          !Ref SocialEventsApiSecurityGroup
+
+  SocialEventsPrivateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Dev
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds: [!Ref SocialEventAPIAccessEndpoint ]
+
+  rEc2InstanceRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - ec2.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        # The managed IAM policy AmazonSSMManagedInstanceCore grants access to Session Manager
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+  
+  rEc2InstanceProfile: 
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      Roles: 
+        - !Ref rEc2InstanceRole
+
+  rSecurityGroupEc2Instance:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG for EC2 Instance
+      VpcId: !Ref VpcIdParameter
+      # Despite this security group containing no ingress rules, Session 
+      # Manager can still provide shell access 
+      SecurityGroupEgress:
+      # The SSM Agent connects to Session Manager over TCP 443
+      - Description: allow outbound HTTPS to the VPC
+        CidrIp: "10.192.0.0/16"
+        FromPort: 443
+        ToPort: 443
+        IpProtocol: tcp
+  
+#  rEc2Instance:
+#    Type: AWS::EC2::Instance
+#    Properties:
+#      ImageId: !Ref pLatestAmiId
+#      InstanceType: "t2.micro"
+      # SubnetId: !Select [ "1", !Ref VpcEndpointSubnetIdsParameter ]  
+#      SubnetId: subnet-01a1b3bcfd7fbd5dd
+#      IamInstanceProfile: !Ref rEc2InstanceProfile 
+#      SecurityGroupIds:
+#        - !Ref rSecurityGroupEc2Instance
+
+# https://github.com/aws-samples/session-manager-without-igw/blob/main/session-manager-without-igw.yml
+
+
+
+TODO
+- Add the network stack to this
+- Check why SSM is not working in the instances, I created a SG all open for a Instance with Role and Public Nw, it worked there, the latest AMI is used
+- Check why the VPC Endpoint is not working, compare it with the CDK version that worked

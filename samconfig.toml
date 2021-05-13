@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "sam-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-v5dwmo9iapyc"
+s3_prefix = "sam-app"
+region = "us-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "VpcIdParameter=\"vpc-02f497f9e77adc4aa\" VpcAllowedSecurityGroupIdParameter=\"sg-02dacd6a526d11548\" VpcEndpointSubnetIdsParameter=\"subnet-08a3821b3c0a134d3,subnet-0307ab823a78fc594\""

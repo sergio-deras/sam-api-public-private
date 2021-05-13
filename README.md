@@ -6,7 +6,7 @@ that will deploy to an API gateway and Lambda.
 ## Setup
 
 ### Pre-reqs
-* Python 3.6 (or 2.7) or higher
+* Python 3.6 (or 2.7) or higher or SAM CLI already installed and configured
 * AWS CLI
 * Node 8.10 or higher
 * Docker if testing locally
@@ -153,6 +153,8 @@ sam package \
 ```
 
 Next, the following command will create a Cloudformation Stack and deploy your SAM resources.
+
+sam deploy --template-file template-ref.yaml --stack-name sam-app-network
 
 ```bash
 sam deploy \
