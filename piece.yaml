@@ -1,0 +1,78 @@
+  SocialEventsPrivateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Dev
+      #Ok
+      MethodSettings:
+        - HttpMethod: "*"
+          ResourcePath: /
+          LoggingLevel: ERROR
+      EndpointConfiguration: PRIVATE
+      Variables:
+        ServerlessExpressLambdaFunctionName: !Ref SocialEventsFunction
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: SocialEventsPrivateApi
+        basePath: /Dev
+        schemes:
+          - https
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal: "*"
+              Action:
+                - "execute-api:Invoke"
+              Resource: "execute-api:/*"
+              Condition:
+                StringEquals:
+                  aws:sourceVpce: !Ref SocialEventAPIAccessEndpoint
+
+        paths:
+          /:
+            x-amazon-apigateway-any-method:
+              produces:
+              - application/json
+              x-amazon-apigateway-integration:
+                responses:
+                  default:
+                    statusCode: 200
+                uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+#          /{proxy+}:
+#            x-amazon-apigateway-any-method:
+#              produces:
+#              - application/json
+#              parameters:
+#              - name: proxy
+#                in: path
+#                required: true
+#                type: string
+#              x-amazon-apigateway-integration:
+#                uri: !Join [ ":", [ !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}", "function:${stageVariables.ServerlessExpressLambdaFunctionName}/invocations"] ]
+#                httpMethod: POST
+#                type: aws_proxy
+#        x-amazon-apigateway-binary-media-types:
+#          - '*/*'
+
+Outputs:
+  VPCRef:
+    Description: VPC
+    Value:  !Ref VpcIdParameter
+    #Value:  !GetAtt VPCStack.Outputs.VpcIdParameter
+
+  SocialEventsPrivateApi:
+    Description: "API Gateway endpoint URL for Dev stage"
+    Value: !Sub "https://${SocialEventsPrivateApi}.execute-api.${AWS::Region}.amazonaws.com/Dev/"
+
+  SocialEventsFunction:
+    Description: "Social Events Lambda Function ARN"
+    Value: !GetAtt SocialEventsFunction.Arn
+
+  SocialEventsFunctionIamRole:
+    Description: "Implicit IAM Role created for Social Events function"
+    Value: !GetAtt SocialEventsFunction.Arn
