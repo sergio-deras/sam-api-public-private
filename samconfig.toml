@@ -3,9 +3,8 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "sam-app-api"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-v5dwmo9iapyc"
+s3_bucket = ""
 s3_prefix = "sam-app-api"
 region = "us-west-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "VpcIdParameter=\"vpc-08e716c7dc09490ed\" VpcAllowedSecurityGroupIdParameter=\"sg-0c3f17c7c1d4dea3f\" VpcEndpointSubnetIdsParameter=\"subnet-0f50739c26939802f,subnet-0238aba80f9a4de69\" pLatestAmiId=\"/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2\""
