@@ -1,3 +1,4 @@
+# EXPERIMENTAL: THE SAM AWS::Serverless::Api DOES NOT WORK CORRECTLY WITH PRIVATE APIs
 # AWS-SAM-Express
 
 A simple demo to show the integration of AWS Serverless Application Model (SAM) and an NodeJS Express application,

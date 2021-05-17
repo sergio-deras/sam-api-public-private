@@ -1,3 +1,7 @@
+# STATUS: It looks like SAM does not support Private Endpoints for APIs yet
+# yet  (meaning AWS::Serverless::Api does not 100%), CDK does work, and 
+# the recommendation is to use CFN too.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
@@ -21,7 +25,7 @@ Parameters:
     #Type: "List<AWS::EC2::Subnet::Id>"
     Type: "CommaDelimitedList"
     Description: The ID of one or more subnets in which to create an endpoint network interface
-    Default:  "subnet-08a3821b3c0a134d3,subnet-0307ab823a78fc594"
+    Default:  "subnet-0f50739c26939802f,subnet-0238aba80f9a4de69"
   pLatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
@@ -96,9 +100,34 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: Dev
+      MethodSettings:
+        - HttpMethod: "*"
+          ResourcePath: /
+          LoggingLevel: ERROR
       EndpointConfiguration:
         Type: PRIVATE
         VPCEndpointIds: [!Ref SocialEventAPIAccessEndpoint ]
+      Variables:
+        ServerlessExpressLambdaFunctionName: !Ref SocialEventsFunction
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          title: SocialEventsPrivateApi
+        basePath: /Dev
+        schemes:
+          - https
+        x-amazon-apigateway-policy:
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: "Allow"
+              Principal: "*"
+              Action:
+                - "execute-api:Invoke"
+              Resource: "execute-api:/*"
+              Condition:
+                StringEquals:
+                  aws:sourceVpce: !Ref SocialEventAPIAccessEndpoint
 
   rEc2InstanceRole: 
     Type: AWS::IAM::Role
@@ -152,7 +181,7 @@ Resources:
 
 
 
-TODO
-- Add the network stack to this
-- Check why SSM is not working in the instances, I created a SG all open for a Instance with Role and Public Nw, it worked there, the latest AMI is used
-- Check why the VPC Endpoint is not working, compare it with the CDK version that worked
+#TODO
+#- Check why SSM is not working in the instances, I created a SG all open for a Instance with Role and Public Nw, it worked there, the latest AMI is used
+#- Add the network stack to this
+#- Check why the VPC Endpoint is not working, compare it with the CDK version that worked

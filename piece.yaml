@@ -2,7 +2,6 @@
     Type: AWS::Serverless::Api
     Properties:
       StageName: Dev
-      #Ok
       MethodSettings:
         - HttpMethod: "*"
           ResourcePath: /
